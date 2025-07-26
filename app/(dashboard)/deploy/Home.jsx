@@ -14,13 +14,13 @@ import axios from "axios";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
-const socket = io(process.env.NEXT_PUBLIC_API_URL);
+// const socket = io(process.env.NEXT_PUBLIC_API_URL);
 
 const firaCode = Fira_Code({ subsets: ["latin"] });
 function Home({ repo, userId }) {
   const apiURL = process.env.NEXT_PUBLIC_API_URL;
   const [repoURL, setURL] = useState("");
- 
+
   const [error, setError] = useState(null);
 
   const [logs, setLogs] = useState([]);
@@ -38,36 +38,63 @@ function Home({ repo, userId }) {
     );
     return [regex.test(repoURL), "Enter valid Github Repository URL"];
   }, [repoURL]);
+  const logfetch = async (id, url) => {
+    try {
+      const logs = await axios.post(`/api/logs`, {
+        projectId: id,
+        gitURL: url,
+      });
+      setLogs((prev) => [...prev, ...logs?.data.logs]);
+
+      setDeployPreviewURL(logs?.data.uri);
+      setLoading(false);
+    } catch (error) {
+      setLoading(false);
+      if (axios.isAxiosError(error)) {
+        if (error.response) {
+          setLogs((prev) => [...prev, error.response.data.error]);
+          setError(error.response.data.error || "An error occurred");
+          return;
+        }
+      } else {
+        setError(error.message);
+      }
+    }
+  };
 
   const handleClickDeploy = async (e) => {
     setLoading(true);
     setDeployPreviewURL("");
     setLogs([]);
     setError(null);
+    setLoading(false);
     try {
-      const resp = await axios.post(`${apiURL}/project`, {
+      const resp = await axios.post(`/api/project`, {
         gitURL: e || repoURL,
         userId: userId,
       });
-
       if (resp.data && resp.data.id) {
-        socket.emit("subscribe", resp.data.id);
         setLogs((prev) => [...prev, "Deploying..."]);
-        const deploy = await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL}/deploy`,
-          {
-            projectId: resp.data.id,
-            gitURL: e || repoURL,
-          }
-        );
-
-        setDeployPreviewURL(deploy?.data?.uri);
+        const deploy = await axios.post(`/api/deploy`, {
+          projectId: resp.data.id,
+          gitURL: e || repoURL,
+        });
+        setTimeout(() => {
+          setLogs((prev) => [...prev, "Deployment started..."]);
+        }, 3000);
+        setTimeout(() => {
+          setLogs((prev) => [...prev, "Fetching logs..."]);
+        }, 5000);
+        setTimeout(() => {
+          logfetch(resp.data.id, e || repoURL);
+        }, 18000);
       }
     } catch (error) {
       setLoading(false);
       if (axios.isAxiosError(error)) {
         if (error.response) {
           setError(error.response.data.error || "An error occurred");
+          setLogs((prev) => [...prev, error.response.data.error]);
           return;
         }
       } else {
@@ -80,21 +107,23 @@ function Home({ repo, userId }) {
     handleClickDeploy(e);
   };
 
-  const handleSocketIncommingMessage = useCallback((message) => {
-    if (message.log == "Done") {
-      setLoading(false);
-    }
-    setLogs((prev) => [...prev, message.log]);
+  // const handleSocketIncommingMessage = useCallback((message) => {
+  //   if (message.log == "Done") {
+  //     setLoading(false);
+  //   }
+  //   console.log("socket message", message);
+  //   setLogs((prev) => [...prev, message.log]);
 
-    logContainerRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, []);
+  //   logContainerRef.current?.scrollIntoView({ behavior: "smooth" });
+  // }, []);
 
-  useEffect(() => {
-    socket.on("log", handleSocketIncommingMessage);
-    return () => {
-      socket.off("log", handleSocketIncommingMessage); // 🧼 clean up the listener
-    };
-  }, [handleSocketIncommingMessage]);
+  // useEffect(() => {
+  //   socket.on("log", handleSocketIncommingMessage);
+  //   return () => {
+  //     socket.off("log", handleSocketIncommingMessage); // 🧼 clean up the listener
+  //   };
+  // }, [handleSocketIncommingMessage]);
+
   return (
     <main className="flex justify-center items-center flex-col md:flex-row gap-4 p-4 flex-wrap">
       <div className="w-full md:w-1/3 sm:mt-10 ">
