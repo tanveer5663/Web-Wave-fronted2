@@ -1,7 +1,9 @@
 {
-  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/(dashboard)/deploy/page": "app/(dashboard)/deploy/page.js",
   "/_not-found/page": "app/_not-found/page.js",
-  "/page": "app/page.js",
-  "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js",
-  "/(dashboard)/deploy/page": "app/(dashboard)/deploy/page.js"
+  "/api/deploy/route": "app/api/deploy/route.js",
+  "/api/logs/route": "app/api/logs/route.js",
+  "/api/project/route": "app/api/project/route.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/page": "app/page.js"
 }
